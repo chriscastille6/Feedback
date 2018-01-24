@@ -1,0 +1,121 @@
+---
+title: "Dissertation Analytics Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r Load and CFA, include = TRUE}
+library("papaja")
+
+#Open gdata: this package allows you to open .xls files.
+library(gdata)
+Diss_Final_Datafile_CLEANED <- read.csv("data.csv")
+
+#Subset data into a new dataframe called "likert". This dataframe contains only likert scaled data (i.e., your item response data).
+likert <- Diss_Final_Datafile_CLEANED[c(7:10,12:31,34:38,40:43)]
+
+#Classify likert-type data as numeric. 
+likert <- as.data.frame(lapply(likert, as.numeric))
+
+#For running factor analyses: Download and open the 'lavaan' package. 
+library(lavaan)
+
+#MITZI: Below is the CFA with maximum likelihood estimation.
+DissCFA1 <- ' DTR  =~ DesToResp1 + DesToResp2 + DesToResp3 + DesToResp4Reco
+              DJ =~ DisJust1 + DisJust2  + DisJust3 + DisJust4
+              POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
+              PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
+              NA =~ Distressed + Upset + Guilty + Scared + Hostile + Irritable + Ashamed + Nervous + Jittery + Afraid'
+
+fit <- cfa(DissCFA1, data=likert)
+summary(fit, fit.measures=TRUE, standardized = TRUE)
+```
+
+
+```{r Clean and SEM, include = TRUE}
+##Create conditional/moderator dataset and bind to likert dataset.
+cond <- Diss_Final_Datafile_CLEANED[c(6,62,64,67)]
+
+#Define the 'cond' dataframe as numeric.
+cond <- as.data.frame(lapply(cond, as.numeric))
+
+##Recode the paratelic variable.
+cond$ParTelic[cond$ParTelic=="Paratelic"] <- 1
+cond$ParTelic[cond$ParTelic=="Telic"] <- 2
+
+#Bind cond to likert
+data <- cbind(cond,likert)
+
+#Create the interaction terms.
+##Feedback Accuracy and Information Type.
+data$INTAccType <- (data$FdbkAccN-(mean(data$FdbkAccN))) * (data$FdbkTypeN-(mean(data$FdbkTypeN)))
+##Paratelic and Feedback Accuracy.
+data$INTParaFkAcc <- (data$ParTelic-(mean(data$ParTelic))) * (data$FdbkAccN-(mean(data$FdbkAccN)))
+##Paratelic and Feedback Valence.
+data$INTParaFkVal <- (data$ParTelic-(mean(data$ParTelic))) * (data$FdbkValN-(mean(data$FdbkValN)))
+
+##Extract goal revision and performance change data.
+grpc <- Diss_Final_Datafile_CLEANED[c(69,70)]
+
+#Bind goal revision and performance change to main dataset.
+data <- cbind(data,grpc)
+
+#MITZI: BELOW IS THE MODEL I REPORTED
+
+#Below is the first SEM model with maximum likelihood estimation.
+DissSEM1 <- '
+  # latent variable definitions
+    POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
+    PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
+    Na =~ Distressed + Upset + Guilty + Scared + Hostile + Irritable + Ashamed + Nervous + Jittery + Afraid
+    DTR  =~ DesToResp1 + DesToResp2 + DesToResp3 + DesToResp4Reco
+    DJ =~ DisJust1 + DisJust2  + DisJust3 + DisJust4
+
+  # regressions
+    POFA ~ a1 * FdbkAccN + a2 * FdbkTypeN + a3 * ParTelic + a4 * FdbkValN + a5 * INTAccType + a6 * INTParaFkAcc + a7 * INTParaFkVal
+    PA ~ b1 * FdbkValN + b2 * ParTelic + b3 * DJ + b4 * INTParaFkVal
+    Na ~ c1 * FdbkValN + c2 *ParTelic + c3 * DJ + c4 * INTParaFkVal
+    DTR ~ e1 * PA + e2 * Na + e3 * DJ
+    DJ ~ f1 * POFA
+    GoalResidGain ~ g1 * DTR
+    PerfResidGain ~ h1 * GoalResidGain
+'
+
+fit <- lavaan:::cfa(DissSEM1, data = data, std.lv = TRUE)
+summary(fit, fit.measures=TRUE, standardized = TRUE)
+
+#To visualize the model, load 'semPlot'.
+library(semPlot)
+semPaths(fit,  layout = "spring", edge.label.cex = 0.5, curvePivot = TRUE, intercepts = FALSE, residuals = FALSE, thresholds = FALSE, structural = FALSE, gui = TRUE, intStyle = "multi")
+
+DissSEMwoutState <- '
+  # latent variable definitions
+    POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
+    PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
+    Na =~ Distressed + Upset + Guilty + Scared + Hostile + Irritable + Ashamed + Nervous + Jittery + Afraid
+    DTR  =~ DesToResp1 + DesToResp2 + DesToResp3 + DesToResp4Reco
+    DJ =~ DisJust1 + DisJust2  + DisJust3 + DisJust4
+
+  # regressions
+    POFA ~ a1 * FdbkAccN + a2 * FdbkTypeN + a4 * FdbkValN + a5 * INTAccType
+    PA ~ b1 * FdbkValN + b3 * DJ
+    Na ~ c1 * FdbkValN + c3 * DJ
+    DTR ~ e1 * PA + e2 * Na + e3 * DJ
+    DJ ~ f1 * POFA
+    GoalResidGain ~ g1 * DTR
+    PerfResidGain ~ h1 * GoalResidGain
+'
+
+fit <- lavaan:::cfa(DissSEMwoutState, data = data, std.lv = TRUE)
+summary(fit, fit.measures=TRUE, standardized = TRUE)
+```
+
+
+# References
+```{r create_r-references}
+r_refs(file = "r-references.bib")
+```
+
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}

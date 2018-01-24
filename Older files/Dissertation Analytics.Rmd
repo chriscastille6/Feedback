@@ -1,0 +1,153 @@
+---
+title: "Dissertation Analytics"
+output: pdf_document
+---
+
+#Data Cleaning
+```{r}
+#Load Data
+library(readxl)
+Diss_Final_Datafile <- read_excel("Diss Final Datafile.xls", 
+    sheet = "Diss Final Datafile.csv")
+
+#Rename variables that are too long.
+colnames(Diss_Final_Datafile)[2] <- "Goal1Nom"
+colnames(Diss_Final_Datafile)[3] <- "Goal1Rel"
+colnames(Diss_Final_Datafile)[4] <- "Goal1Lvl"
+colnames(Diss_Final_Datafile)[10] <- "LSUCrt"
+colnames(Diss_Final_Datafile)[15] <- "VTUCrt"
+colnames(Diss_Final_Datafile)[20] <- "UDaCrt"
+colnames(Diss_Final_Datafile)[25] <- "NYUCrt"
+colnames(Diss_Final_Datafile)[30] <- "PSUCrt"
+colnames(Diss_Final_Datafile)[35] <- "CSUCrt"
+colnames(Diss_Final_Datafile)[40] <- "ASUCrt"
+colnames(Diss_Final_Datafile)[45] <- "JSUCrt"
+colnames(Diss_Final_Datafile)[50] <- "URICrt"
+colnames(Diss_Final_Datafile)[55] <- "USFCrt"
+colnames(Diss_Final_Datafile)[60] <- "AUCrt"
+colnames(Diss_Final_Datafile)[64] <- "UNCrt"
+colnames(Diss_Final_Datafile)[65] <- "ParaVsTelic"
+colnames(Diss_Final_Datafile)[68] <- "DesireRsp1"
+colnames(Diss_Final_Datafile)[69] <- "DesireRsp2"
+colnames(Diss_Final_Datafile)[70] <- "DesireRsp3"
+colnames(Diss_Final_Datafile)[71] <- "DesireRsp4NEG"
+colnames(Diss_Final_Datafile)[73] <- "Interested"
+colnames(Diss_Final_Datafile)[74] <- "Distressed"
+colnames(Diss_Final_Datafile)[75] <- "Excited"
+colnames(Diss_Final_Datafile)[76] <- "Upset"
+colnames(Diss_Final_Datafile)[77] <- "Strong"
+colnames(Diss_Final_Datafile)[78] <- "Guilty"
+colnames(Diss_Final_Datafile)[79] <- "Scared"
+colnames(Diss_Final_Datafile)[80] <- "Hostile"
+colnames(Diss_Final_Datafile)[81] <- "Enthusiastic"
+colnames(Diss_Final_Datafile)[82] <- "Proud"
+colnames(Diss_Final_Datafile)[83] <- "Irritable"
+colnames(Diss_Final_Datafile)[84] <- "Alert"
+colnames(Diss_Final_Datafile)[85] <- "Ashamed"
+colnames(Diss_Final_Datafile)[86] <- "Inspired"
+colnames(Diss_Final_Datafile)[87] <- "Nervous"
+colnames(Diss_Final_Datafile)[88] <- "Determined"
+colnames(Diss_Final_Datafile)[89] <- "Attentive"
+colnames(Diss_Final_Datafile)[90] <- "Jittery"
+colnames(Diss_Final_Datafile)[91] <- "Active"
+colnames(Diss_Final_Datafile)[92] <- "Afraid"
+colnames(Diss_Final_Datafile)[93] <- "PercepAcc1"
+colnames(Diss_Final_Datafile)[94] <- "PercepAcc2"
+colnames(Diss_Final_Datafile)[95] <- "PercepAcc3"
+colnames(Diss_Final_Datafile)[97] <- "PercepAcc4NEG"
+colnames(Diss_Final_Datafile)[98] <- "PercepAcc5"
+colnames(Diss_Final_Datafile)[99] <- "DisJust1"
+colnames(Diss_Final_Datafile)[100] <- "DisJust2"
+colnames(Diss_Final_Datafile)[102] <- "DisJust3"
+colnames(Diss_Final_Datafile)[103] <- "DisJust4"
+colnames(Diss_Final_Datafile)[104] <- "Goal2Nom"
+colnames(Diss_Final_Datafile)[105] <- "Goal2Rel"
+colnames(Diss_Final_Datafile)[106] <- "Goal2Lvl"
+colnames(Diss_Final_Datafile)[112] <- "HUCrt"
+colnames(Diss_Final_Datafile)[117] <- "OSUCrt"
+colnames(Diss_Final_Datafile)[122] <- "FSUCrt"
+colnames(Diss_Final_Datafile)[127] <- "RUCrt"
+colnames(Diss_Final_Datafile)[132] <- "UNDCrt"
+colnames(Diss_Final_Datafile)[137] <- "TSUCrt"
+colnames(Diss_Final_Datafile)[142] <- "UMCrt"
+colnames(Diss_Final_Datafile)[147] <- "NDCrt"
+colnames(Diss_Final_Datafile)[152] <- "RU2Crt"
+colnames(Diss_Final_Datafile)[157] <- "UACrt"
+colnames(Diss_Final_Datafile)[162] <- "UWCrt"
+colnames(Diss_Final_Datafile)[166] <- "UM2Crt"
+colnames(Diss_Final_Datafile)[169] <- "ConfJudgAcc"
+colnames(Diss_Final_Datafile)[170] <- "SimilarPrjs"
+colnames(Diss_Final_Datafile)[173] <- "Ethnicity"
+colnames(Diss_Final_Datafile)[174] <- "Hispanic"
+colnames(Diss_Final_Datafile)[175] <- "Age"
+colnames(Diss_Final_Datafile)[176] <- "Gender"
+colnames(Diss_Final_Datafile)[177] <- "Education"
+colnames(Diss_Final_Datafile)[178] <- "Occupation"
+colnames(Diss_Final_Datafile)[179] <- "YrsCrtEmplyr"
+colnames(Diss_Final_Datafile)[180] <- "YrsWrkExp"
+colnames(Diss_Final_Datafile)[181] <- "FdbkType"
+colnames(Diss_Final_Datafile)[182] <- "GoalRevision"
+
+#Subset data to contain only necessary variables.
+data <- Diss_Final_Datafile[c(1:4,10,15,20,25,30,35,40,45,50,55,60,64,68:71,73:95,97:100,102:106,112,117,122,127,132,137,142,147,152,157,162,166,169, 170, 173:182)]
+data <- data.frame(data, stringsAsFactors = FALSE)
+
+#Re-code negative items (DesireRsp4NEG and PercepAcc4NEG)
+library(car)
+data$DesireRsp4NEG <- recode(data$DesireRsp4NEG,'1=5;2=4;4=2;5=1')
+data$PercepAcc4NEG <- recode(data$PercepAcc4NEG,'1=5;2=4;4=2;5=1')
+
+#Aggregate variables (DesireRsp, PA, NA, PercepAcc, DisJust)
+
+#Create feedback accuracy (feedACC) variable
+LSUCrt <- as.numeric(data$LSUCrt)
+VTUCrt <- as.numeric(data$VTUCrt)
+UDaCrt <- as.numeric(data$UDaCrt)
+NYUCrt <- as.numeric(data$NYUCrt)
+PSUCrt <- as.numeric(data$PSUCrt)
+CSUCrt <- as.numeric(data$CSUCrt)
+ASUCrt <- as.numeric(data$ASUCrt)
+JSUCrt <- as.numeric(data$JSUCrt)
+URICrt <- as.numeric(data$URICrt)
+USFCrt <- as.numeric(data$USFCrt)
+AUCrt <- as.numeric(data$AUCrt)
+UNCrt <- as.numeric(data$UNCrt)
+
+df <- as.data.frame(cbind(LSUCrt,VTUCrt,UDaCrt,NYUCrt,PSUCrt,CSUCrt,ASUCrt,JSUCrt,URICrt,USFCrt,AUCrt,UNCrt))
+
+df$NumbUnivCorrect <- df$LSUCrt + df$VTUCrt + df$UDaCrt + df$NYUCrt + df$PSUCrt + df$CSUCrt + df$ASUCrt + df$JSUCrt + df$URICrt + df$USFCrt + df$AUCrt + df$UNCrt
+
+##Histogram
+hist(df$NumbUnivCorrect, plot=TRUE)
+
+#Write data to file
+library(openxlsx)
+write.xlsx(data, "mydata.xlsx")
+
+##Create NUnvCrt
+
+
+##Create Unv# needed for relative ptpts
+##Create does NUnvCrt meet goal
+##Create FdbkAcc by comparing previous with FdbkValence
+
+#Create PerfRevision variable
+
+```
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
