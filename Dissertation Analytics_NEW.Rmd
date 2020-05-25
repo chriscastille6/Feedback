@@ -9,13 +9,19 @@ output:
 
 ```{r Load Packages, include=FALSE}
 library(gdata)
+install.packages("lavaan")
 library(lavaan)
-library(MVN)
+install.packages("faoutlier")
 library(faoutlier)
+install.packages("car")
 library(car)
+install.packages("psych")
 library(psych)
+install.packages("ggplot2")
 library(ggplot2)
+install.packages("graphics")
 library(graphics)
+library(tidyverse)
 ```
 
 
@@ -39,15 +45,66 @@ Below, I checked for multivariate normality.
 library(lavaan)
 
 #Testing for Multivariate Normality
+install.packages("MVN")
 library(MVN)
 result <- mardiaTest(likert, cov = FALSE, qqplot = TRUE)
 result
 result1 <- hzTest(likert, qqplot = FALSE)
 result1
+
+#Excluding outliers
+dm7 <- likert[-c(535, 433, 756, 73, 28, 482, 681), ]
 ```
 
-```{r CFAs, include = TRUE}
 
+```{r Include Conditions and Interactions, include = TRUE}
+#Create conditional/moderator dataset and bind to likert dataset.
+cond <- Diss_Final_Datafile_CLEANED[c(6,62,64,67)]
+
+#Remove outliers
+cond <- cond[-c(535, 433, 756, 73, 28, 482, 681), ]
+#Positive Valence is 1
+#Negative Valence is 2
+
+#Define the 'cond' dataframe as numeric.
+cond <- as.data.frame(lapply(cond, as.numeric))
+#"Paratelic" =  1
+#"Telic" = 2
+
+#Recode Moderator variables.
+library(car)
+cond$FdbkTypeN<-car::recode(cond$FdbkTypeN,"1=2;2=1")
+cond$FdbkValN<-car::recode(cond$FdbkValN,"1=2;2=1")
+cond$FdbkAccN<-car::recode(cond$FdbkAccN,"1=2;2=1")
+#Positive Valence is NOW 2.
+#Negative Valence is NOW 1.
+
+#get condition counts
+#1=negative,2=positive;1=inaccurate,2=accurate;1=relative,2=nominal
+cond %>% 
+  group_by(FdbkTypeN,FdbkValN,FdbkAccN) %>%
+  tally()
+
+#Bind cond to likert/dm7
+data <- cbind(cond,dm7)
+
+#Create the interaction terms.
+##Feedback Accuracy and Information Type.
+data$INTAccType <- (data$FdbkAccN-(mean(data$FdbkAccN))) * (data$FdbkTypeN-(mean(data$FdbkTypeN)))
+##Paratelic and Feedback Accuracy.
+data$INTParaFkAcc <- (data$ParTelic-(mean(data$ParTelic))) * (data$FdbkAccN-(mean(data$FdbkAccN)))
+##Paratelic and Feedback Valence.
+data$INTParaFkVal <- (data$ParTelic-(mean(data$ParTelic))) * (data$FdbkValN-(mean(data$FdbkValN)))
+
+##Extract goal revision and performance change data. Add in task difficulty variables.
+grpc <- Diss_Final_Datafile_CLEANED[c(69,70,74,75)]
+grpc <- grpc[-c(535, 433, 756, 73, 28, 482, 681), ]
+
+#Bind goal revision and performance change to main dataset.
+data <- cbind(data,grpc)
+```
+
+```{r Model Testing, include = TRUE}
 library(lavaan)
 
 #CFA with maximum likelihood estimation
@@ -57,7 +114,7 @@ DissCFA1 <- ' DTR  =~ DesToResp1 + DesToResp2 + DesToResp3 + DesToResp4Reco
               PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
               Na =~ Distressed + Upset + Guilty + Scared + Hostile + Ashamed + Nervous + Afraid + Jittery + Irritable
 '
-fit <- cfa(DissCFA1, data=likert, orthogonal=FALSE)
+fit <- lavaan::cfa(DissCFA1, data=likert, orthogonal=FALSE)
 MI <- modindices(fit)
 summary(fit, fit.measures=TRUE, standardized = TRUE)
 write.csv(MI, file = "DissCFA1MI.csv")
@@ -97,84 +154,6 @@ write.csv(MI, file = "DissCFA1MI.csv")
 #summary(fit, fit.measures=TRUE, standardized = TRUE)
 #write.csv(MI, file = "DissCFA1MI.csv")
 
-#Checking for multivariate outliers using "faoutlier
-library(faoutlier)
-#FS <- forward.search(data,DissSEM1)
-#Getting generalized Cooks Distance and DFBETAs.
-x <- gCD(data,DissSEM1,progress = TRUE)
-#Index plot for gCD.
-plot(x, y = NULL, main = "Generalized Cook Distance",
-  type = c("p", "h"), ylab = "gCD")
-#Print out top 10 cases.
-print(x, ncases = 10, stat = "gCD")
-```
-
-```{r Excluding outliers from model, include = TRUE}
-#Excluding outliers
-dm7 <- likert[-c(535, 433, 756, 73, 28, 482, 681), ]
-```
-
-A second CFA was run without Jittery and Irritable since those 2 items had the highest MIs and loaded onto inappropriate factors. This CFA also excluded the 7 most extreme multivariate outliers.
-```{r CFA2 without jittery and irritable and outliers, include = TRUE}
-DissCFA2 <- ' DTR  =~ DesToResp1 + DesToResp2 + DesToResp3 + DesToResp4Reco
-              DJ =~ DisJust1 + DisJust2  + DisJust3 + DisJust4
-              POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
-              PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
-              Na =~ Distressed + Upset + Guilty + Scared + Hostile + Ashamed + Nervous + Afraid + Jittery + Irritable
-'
-fit <- cfa(DissCFA2, data, std.lv = TRUE, estimator = "WLSMV")
-summary(fit, fit.measures=TRUE,standardized = TRUE, rsquare=TRUE, ci=TRUE)
-
-#fit <- cfa(DissCFA2, data=dm7, estimator = "WLSMV", orthogonal=FALSE)
-#MI <- modindices(fit)
-summary(fit, standardized = TRUE)
-fitMeasures(fit, c("chisq", "df", "pvalue", "cfi"))
-write.csv(MI, file = "DissCFA2MI.csv")
-
-```
-
-```{r Include Conditions and Interactions, include = TRUE}
-#Create conditional/moderator dataset and bind to likert dataset.
-cond <- Diss_Final_Datafile_CLEANED[c(6,62,64,67)]
-
-#Remove outliers
-cond <- cond[-c(535, 433, 756, 73, 28, 482, 681), ]
-#Positive Valence is 1
-#Negative Valence is 2
-
-#Define the 'cond' dataframe as numeric.
-cond <- as.data.frame(lapply(cond, as.numeric))
-#"Paratelic" =  1
-#"Telic" = 2
-
-#Recode Moderator variables.
-library(car)
-cond$FdbkTypeN<-recode(cond$FdbkTypeN,"1=2;2=1")
-cond$FdbkValN<-recode(cond$FdbkValN,"1=2;2=1")
-cond$FdbkAccN<-recode(cond$FdbkAccN,"1=2;2=1")
-#Positive Valence is NOW 2.
-#Negative Valence is NOW 1.
-
-#Bind cond to likert
-data <- cbind(cond,dm7)
-
-#Create the interaction terms.
-##Feedback Accuracy and Information Type.
-data$INTAccType <- (data$FdbkAccN-(mean(data$FdbkAccN))) * (data$FdbkTypeN-(mean(data$FdbkTypeN)))
-##Paratelic and Feedback Accuracy.
-data$INTParaFkAcc <- (data$ParTelic-(mean(data$ParTelic))) * (data$FdbkAccN-(mean(data$FdbkAccN)))
-##Paratelic and Feedback Valence.
-data$INTParaFkVal <- (data$ParTelic-(mean(data$ParTelic))) * (data$FdbkValN-(mean(data$FdbkValN)))
-
-##Extract goal revision and performance change data. Add in task difficulty variables.
-grpc <- Diss_Final_Datafile_CLEANED[c(69,70,74,75)]
-grpc <- grpc[-c(535, 433, 756, 73, 28, 482, 681), ]
-
-#Bind goal revision and performance change to main dataset.
-data <- cbind(data,grpc)
-```
-
-```{r SEM, include = TRUE}
 #SEM
 DissSEM1 <- '
   # latent variable definitions - REMOVED JITTERY AND IRRITABLE
@@ -216,6 +195,24 @@ DissSEM1 <- '
 '
 #Fit 'SEM' model to data
 fit <- lavaan::sem(DissSEM1, data , std.lv = TRUE, estimator = "WLSMV")
+summary(fit, fit.measures=TRUE,standardized = TRUE, rsquare=TRUE, ci=TRUE)
+factor.scores <- predict(fit)
+factor.scores <- as.data.frame(factor.scores)
+factor.scores <- as.data.frame(factor.scores$POFA)
+names(factor.scores) <- c("POFA")
+
+#Checking for multivariate outliers using "faoutlier
+library(faoutlier)
+#FS <- forward.search(data,DissSEM1)
+#Getting generalized Cooks Distance and DFBETAs.
+x <- gCD(data,DissSEM1,progress = TRUE)
+#Index plot for gCD.
+plot(x, y = NULL, main = "Generalized Cook Distance",
+  type = c("p", "h"), ylab = "gCD")
+#Print out top 10 cases.
+print(x, ncases = 10, stat = "gCD")
+
+fit <- lavaan::sem(DissSEM1, data, std.lv = TRUE, estimator = "WLSMV")
 summary(fit, fit.measures=TRUE,standardized = TRUE, rsquare=TRUE, ci=TRUE)
 factor.scores <- predict(fit)
 factor.scores <- as.data.frame(factor.scores)
@@ -316,7 +313,9 @@ plot3 <- ggplot(dat2, aes(x = RTState, y = mean, fill = FeedbackValence))+
   scale_fill_grey()
 plot3
 ggsave('stateXvalence.png', width=6, height=6, unit='in', dpi=300)
+```
 
+```{r Miscellaneous Code}
 ###Check on weird results with valence and POFA.
 dat2 <- describeBy(Diss_Final_Datafile_CLEANED$PercepAccScl,list(AccTy$FdbkValN,AccTy$FdbkAccN), mat=TRUE,digits=2)
 names(dat2)[names(dat2) == 'group1'] = 'FeedbackValence'
@@ -369,6 +368,28 @@ interaction.plot(FdbkValN, ParTelic, AccTy$POFA, type="b", col=c(1:3),
 library(semPlot)
 semPaths(fit,  layout = "spring", edge.label.cex = 0.5, curvePivot = TRUE, intercepts = FALSE, residuals = FALSE, thresholds = FALSE, structural = FALSE, gui = TRUE, intStyle = "multi")
 ```
+
+A second CFA was run without Jittery and Irritable since those 2 items had the highest MIs and loaded onto inappropriate factors. This CFA also excluded the 7 most extreme multivariate outliers.
+```{r CFA2 without jittery and irritable and outliers, include = TRUE}
+DissCFA2 <- ' DTR  =~ DesToResp1 + DesToResp2 + DesToResp3 + DesToResp4Reco
+              DJ =~ DisJust1 + DisJust2  + DisJust3 + DisJust4
+              POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
+              PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
+              Na =~ Distressed + Upset + Guilty + Scared + Hostile + Ashamed + Nervous + Afraid + Jittery + Irritable
+'
+fit <- cfa(DissCFA2, data, std.lv = TRUE, estimator = "WLSMV")
+summary(fit, fit.measures=TRUE,standardized = TRUE, rsquare=TRUE, ci=TRUE)
+
+#fit <- cfa(DissCFA2, data=dm7, estimator = "WLSMV", orthogonal=FALSE)
+#MI <- modindices(fit)
+summary(fit, standardized = TRUE)
+fitMeasures(fit, c("chisq", "df", "pvalue", "cfi"))
+write.csv(MI, file = "DissCFA2MI.csv")
+
+```
+
+
+
 Show in New WindowClear OutputExpand/Collapse Output
    |++++++++++++++                                    | 27% ~14m 35s      
  Show Traceback
@@ -832,7 +853,10 @@ apatheme=theme_bw()+
         panel.border=element_blank(),
         axis.line=element_line(),
         text=element_text(family='Times'))
-plot1 <- ggplot(dat2, aes(x = FeedbackType, y = mean, fill = FeedbackAccuracy))+
+
+#sort FeedbackAccuracy for graphing purposes
+dat2$FeedbackAccuracy <- factor(dat2$FeedbackAccuracy, levels = c("inaccurate","accurate"))
+plot1 <- ggplot(dat2, aes(x = FeedbackAccuracy, y = mean, fill = FeedbackType))+
   geom_bar(stat='identity', position=dodge)+
   geom_errorbar(limits, position=dodge, width=0.25)+
   apatheme+
@@ -949,7 +973,7 @@ semPaths(fit,  layout = "spring", edge.label.cex = 0.5, curvePivot = TRUE, inter
 ```
 # Without RT
 ```{r Without RT}
-#SEM
+#SEM - RT components removed
 DissSEM3 <- '
   # latent variable definitions - REMOVED JITTERY AND IRRITABLE
     POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
@@ -983,12 +1007,73 @@ DissSEM3 <- '
   AccTypPofa := f11*e11*d11*d21*d31*c11*c12*c21*b42
 #Total Significant Effects
   TotalAccEff := f11*e11*c11*d21*c21*a32 + f11*e11*d31*c21*a32
+  
 '
 #Fit 'SEM' model to data
-fit <- lavaan::sem(DissSEM3, data , std.lv = TRUE, estimator = "WLSMV")
+fit <- lavaan::sem(DissSEM3, data , std.lv = TRUE, estimator = "DWLS", se = "bootstrap", bootstrap = 10000)
 summary(fit, fit.measures=TRUE,standardized = TRUE, rsquare=TRUE, ci=TRUE) 
 ```
+
+```{SEM for OBHDP Paper}
+#SEM - Desire to Respond and Justice removed
+DissSEM3 <- '
+  # latent variable definitions - REMOVED JITTERY AND IRRITABLE
+    POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
+    PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
+    Na =~ Distressed + Upset + Guilty + Scared + Hostile + Ashamed + Nervous + Afraid
+
+#Outcome Model
+  #PerfResidGain ~ f11*GoalResidGain
+  Perf1 ~ Goal1Lvl
+  Perf2 ~ f11*Goal2Lvl + Perf1
+#Mediators Model
+  #GoalResidGain ~ e11*DTR
+  Goal2Lvl ~ e11*DTR + Goal1Lvl
+  DTR ~ c11*PA + c12*Na + d31*DJ
+  DJ ~ c21*POFA
+  #POFA ~ a31*FdbkValN + a32*FdbkAccN + FdbkTypeN  + b42*INTAccType
+  POFA ~ a31*FdbkValN + b42*INTAccType
+  PA ~ a11*FdbkValN + d21*DJ
+  Na ~ a21*FdbkValN + d11*DJ
+#Indirect Main Effects
+  ValPaDtrG := f11*e11*c11*a11
+  ValNaDtrG := f11*e11*c12*a21
+  ValPfaDjNaDtrG := f11*e11*c12*d11*c21*a31
+  ValPfaDjPaDtrG := f11*e11*c11*d21*c21*a31
+  ValPfaDjDtrG := f11*e11*d31*c21*a31
+  #AccPfaDjNaDtrG := f11*e11*c12*d11*c21*a32
+  #AccPfaDjPaDtrG := f11*e11*c11*d21*c21*a32
+  #AccPfaDjDtrG := f11*e11*d31*c21*a32
+#Moderating Effects
+  AccTypPofa := f11*e11*d11*d21*d31*c11*c12*c21*b42
+#Total Significant Effects
+  #TotalAccEff := f11*e11*c11*d21*c21*a32 + f11*e11*d31*c21*a32
+  TotalAccEff := f11*e11*c11*d21*c21 + f11*e11*d31*c21
+'
+#Fit 'SEM' model to data
+fit <- lavaan::sem(DissSEM3, data , std.lv = TRUE, estimator = "DWLS", se = "bootstrap", bootstrap = 10000)
+summary(fit, fit.measures=TRUE,standardized = TRUE, rsquare=TRUE, ci=TRUE) 
+```
+
+#Process followed from nickmachalak.com/blog_entries/2018/nrg02/nrg02.html
+```{r Conditional Indirect Effects Analysis}
+##Add a column in both datasets that idenitifies FIT group
+##Bind Nominal and Relative data by rows
+##Mean-center predictors
+##Compute interaction terms
+###Print first and last 5 observations
+###Save to data folder
+##Visualize relationships
+##Write model to test conditional indirect effect using sem() from lavaan
+##Set random seed so results can be reproduced
+##Fit model (you must specify bootstrapping in the sem() function)
+##Summarize model
+##Print all model paramteres
+
+
 # References
+```
+
 ```{r create_r-references}
 r_refs(file = "r-references.bib")
 ```
