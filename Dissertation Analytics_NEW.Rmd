@@ -316,11 +316,15 @@ fit <- aov(POFA ~ FdbkTypeN:FdbkAccN + FdbkValN + FdbkTypeN, data=AccTy) # There
 summary(fit)
 #H5: When feedback is nominal, there is a positive and strong relationship between feedback accuracy and POFA. When Feedback is relative, there is not relationship linking feedback acccuracy to POFA. 
 #subset data into two smaller groups, compute t-statistic and test. 
+#nominal
 AccTyN <- AccTy[ which(AccTy$FdbkTypeN=='2'),]
 t.test(AccTyN$scale1~AccTyN$FdbkAccN)
+cohen.d(AccTyN, "FdbkAccN")
 boxplot(AccTyN$scale1~AccTyN$FdbkAccN)
+#relative
 AcctyR <- AccTy[ which(AccTy$FdbkTypeN=='1'),]
 t.test(AcctyR$scale1~AcctyR$FdbkAccN)
+cohen.d(AcctyR, "FdbkAccN")
 boxplot(AcctyR$scale1~AcctyR$FdbkAccN)
 
 #require(graphics)
