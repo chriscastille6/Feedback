@@ -228,7 +228,7 @@ names(factor.scores) <- c("POFA")
 #compare models
 anova(fit,fitb)
 
-# Fix the [PA,NA] -> GS effects to zero since they are non-significant.
+# Fix the [PA,NA] -> GS effects to zero since they are non-significant, add in the feedback accuracy and feedback information type conditions.
 DissSEM3 <- '
   # latent variable definitions - Bifactor added
     POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
@@ -249,9 +249,9 @@ Activation =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined 
   Perf2 ~ f11*Goal2Lvl + Perf1
   
 #Mediators Model
-  Goal2Lvl ~ Goal1Lvl + e3*DJ + a41*FdbkValN + 0*PA + 0*Na 
+  Goal2Lvl ~ Goal1Lvl + e3*DJ + a41*FdbkValN + 0*PA + 0*Na
   DJ ~ c21*POFA + FdbkValN
-  POFA ~ a31*FdbkValN + b42*INTAccType
+  POFA ~ a31*FdbkValN + b42*INTAccType + FdbkAccN + FdbkTypeN
   PA ~ a11*FdbkValN + d21*DJ
   Na ~ a21*FdbkValN + d11*DJ
 '
@@ -265,18 +265,56 @@ factor.scores <- as.data.frame(factor.scores)
 factor.scores <- as.data.frame(factor.scores$POFA)
 names(factor.scores) <- c("POFA")
 
+# Add in the DJ -> affective polarity link
+DissSEM4 <- '
+  # latent variable definitions - Bifactor added
+    POFA   =~ PercepAcc1 + PercepAcc2 + PercepAcc3 + PercepAcc4Reco + PercepAcc5
+    PA =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert
+    Na =~ Distressed + Upset + Guilty + Scared + Hostile + Ashamed + Nervous + Afraid + Jittery + Irritable
+    DJ =~ DisJust1 + DisJust2  + DisJust3 + DisJust4
+
+#Bifactor
+Activation =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined + Attentive + Active + Inspired + Alert + Distressed + Upset + Guilty + Scared + Hostile + Ashamed + Nervous + Afraid + Jittery + Irritable
+
+#Constrain PA and Na covariance to 0
+    PA~~0*Na
+    PA~~0*Activation
+    Na~~0*Activation
+
+#Outcome Model
+  Perf1 ~ Goal1Lvl
+  Perf2 ~ f11*Goal2Lvl + Perf1
+  
+#Mediators Model
+  Goal2Lvl ~ Goal1Lvl + e3*DJ + a41*FdbkValN + 0*PA + 0*Na
+  DJ ~ c21*POFA + FdbkValN
+  POFA ~ a31*FdbkValN + b42*INTAccType + FdbkAccN + FdbkTypeN
+  PA ~ a11*FdbkValN + d21*DJ
+  Na ~ a21*FdbkValN + d11*DJ
+  Activation ~ DJ
+'
+#Fit SEM to data
+fitd <- lavaan::sem(DissSEM4, data, std.lv = TRUE, estimator = "WLSMV")
+summary(fitd, fit.measures=TRUE, standardized = TRUE, rsquare=TRUE, ci=TRUE)
+MI <- modindices(fitd)
+write.csv(MI, file = "DissSEM.csv")
+factor.scores <- predict(fitb)
+factor.scores <- as.data.frame(factor.scores)
+factor.scores <- as.data.frame(factor.scores$POFA)
+names(factor.scores) <- c("POFA")
+
 #compare models
-anova(fitb,fitc)
+anova(fitc,fitd)
 
 #To visualize the model, load 'semPlot'.
 semPaths(fitc,  layout = "spring", edge.label.cex = 0.5, curvePivot = TRUE, intercepts = FALSE, residuals = FALSE, thresholds = FALSE, structural = FALSE, gui = TRUE, intStyle = "multi")
 
 # Examine residuals
-resid(fitc, type = 'raw')
-resid(fitc, type = 'cor')
+resid(fitd, type = 'raw')
+resid(fitd, type = 'cor')
 
 # Extract unique correlation residuals
-fitCorResiduals <- resid(fitc, type = 'cor')$cov
+fitCorResiduals <- resid(fitd, type = 'cor')$cov
 fitCorResidualsUnique <- fitCorResiduals[lower.tri(fitCorResiduals, diag = TRUE)]
 
 # View summary of stem-and-leaf plot
@@ -296,7 +334,7 @@ myFlaggedResiduals <- data.frame(flaggedRowNames, flaggedColNames, flaggedValues
 # These appear to be method effects (avoid correlating residuals). 
 
 # Print covariance matrix of accepted model to allow for independent reproducibiliity
-fitted(fit)
+fitted(fitd)
 
 #Note: this is the code that was used to identify outliers trimmed in a previous chunk.
 #Getting generalized Cooks Distance and DFBETAs.
@@ -364,10 +402,6 @@ ggsave('accXtype.png', width=6, height=6, unit='in', dpi=300)
 library(MASS)
 tbl <- table(data$FdbkValN,data$FdbkAccN)
 chisq.test(tbl)
-
-# multiple regression
-model <- lm(POFA ~ FdbkValN + FdbkTypeN + FdbkAccN + FdbkTypeN*FdbkAccN, AccTy)
-summary(model)
 ```
 
 ```{r Supplemental analysis and plots}
