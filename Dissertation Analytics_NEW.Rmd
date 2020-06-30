@@ -95,6 +95,15 @@ grpc <- grpc[-c(535, 433, 756, 73, 28, 482, 681), ]
 data <- cbind(data,grpc)
 ```
 
+```{r Descriptives Table, include = TRUE}
+#Create dataframe for descriptive table (1: correlations)
+d <- data[c(2:6,40:44)]
+scores <- as.data.frame(my.scales[["scores"]])
+descriptives <- cbind(d,scores)
+descriptives <- descriptives[c(3,2,1,8,9,10,11,12,13,14,4,6,5,7)]
+apaTables::apa.cor.table(descriptives, filename="Table1_APA.doc", table.number=1)
+```
+
 ```{r Model Testing Respecification and Visualization, include = TRUE}
 #CFA1 
 DissCFA1 <- ' 
@@ -251,7 +260,7 @@ Activation =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined 
 #Mediators Model
   Goal2Lvl ~ Goal1Lvl + e3*DJ + a41*FdbkValN + 0*PA + 0*Na
   DJ ~ c21*POFA + FdbkValN
-  POFA ~ a31*FdbkValN + b42*INTAccType + 0*FdbkAccN + 0*FdbkTypeN
+  POFA ~ a31*FdbkValN + b42*INTAccType + FdbkAccN + FdbkTypeN
   PA ~ a11*FdbkValN + d21*DJ
   Na ~ a21*FdbkValN + d11*DJ
 '
@@ -348,7 +357,6 @@ fitted(fitd)
 ##Create scale scores for POFA
 my.keys <- make.keys(data,list(scale1 = c(31,32,33,34,35))) #etc 
 my.scale <- scoreItems(my.keys,data)
-my.scale
 AccTy <- cbind(factor.scores,my.scale[["scores"]],data)
 fit <- aov(POFA ~ FdbkTypeN:FdbkAccN + FdbkValN + FdbkTypeN, data=AccTy) # There appear to be direct effects linking FIT and FA to POFA.
 summary(fit)
@@ -398,7 +406,7 @@ plot1 <- ggplot(dat2, aes(x = FeedbackType, y = mean, fill = FeedbackAccuracy))+
 plot1
 ggsave('accXtype.png', width=6, height=6, unit='in', dpi=300)
 
-# chi-square result
+# chi-square result for dependency between feedback accuracy and feedback valence.
 library(MASS)
 tbl <- table(data$FdbkValN,data$FdbkAccN)
 chisq.test(tbl)
