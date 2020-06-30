@@ -210,7 +210,7 @@ DissSEM2 <- '#includes the condition and goal
   
 #Mediators Model
   Goal2Lvl ~ Goal1Lvl + e1*PA + e2*Na + e3*DJ + a41*FdbkValN
-  DJ ~ c21*POFA
+  DJ ~ c21*POFA + FdbkValN
   POFA ~ a31*FdbkValN + b42*INTAccType
   PA ~ a11*FdbkValN + d21*DJ
   Na ~ a21*FdbkValN + d11*DJ
@@ -251,7 +251,7 @@ Activation =~ Interested + Excited + Strong + Enthusiastic + Proud + Determined 
 #Mediators Model
   Goal2Lvl ~ Goal1Lvl + e3*DJ + a41*FdbkValN + 0*PA + 0*Na
   DJ ~ c21*POFA + FdbkValN
-  POFA ~ a31*FdbkValN + b42*INTAccType + FdbkAccN + FdbkTypeN
+  POFA ~ a31*FdbkValN + b42*INTAccType + 0*FdbkAccN + 0*FdbkTypeN
   PA ~ a11*FdbkValN + d21*DJ
   Na ~ a21*FdbkValN + d11*DJ
 '
